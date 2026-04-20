@@ -16,6 +16,7 @@ extend-select = [
     "UP",   # pyupgrade
     "TID",  # flake8-tidy-imports
 ]
+ignore = ["PLR2004"]
 
 [lint.isort]
 force-single-line=true

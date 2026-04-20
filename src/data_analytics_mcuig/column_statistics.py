@@ -39,8 +39,7 @@ def calculate_column_statistics(
 
     if data.shape[1] == 0:
         raise ValueError(
-            "No columns to analyze. Use numeric_only=False or add numeric "
-            "columns."
+            "No columns to analyze. Use numeric_only=False or add numeric columns."
             if numeric_only
             else "DataFrame has no columns."
         )
@@ -64,9 +63,7 @@ def calculate_column_statistics(
     out["nan_count"] = data.isna().sum(axis=0)
     out["non_nan_count"] = data.notna().sum(axis=0)
     n_rows = data.shape[0]
-    out["nan_percentage"] = (
-        out["nan_count"] / n_rows if n_rows else float("nan")
-    )
+    out["nan_percentage"] = out["nan_count"] / n_rows if n_rows else float("nan")
 
     return out
 
