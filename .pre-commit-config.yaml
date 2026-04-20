@@ -1,0 +1,26 @@
+default_language_version:
+  python: python3.14
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-toml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.2
+    hooks:
+      - id: pyupgrade
+        args: [--py314-plus]
+        exclude: |
+          (?x)(
+            codemods/.*test_cases/.*$
+          )
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.15.11
+    hooks:
+      - id: ruff
+        args: [ --fix ]
+      - id: ruff-format

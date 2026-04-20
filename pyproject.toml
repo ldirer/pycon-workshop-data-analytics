@@ -7,7 +7,9 @@ authors = [
     { name = "Laurent Direr", email = "4263535+ldirer@users.noreply.github.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "pandas>=3.0.2",
+]
 
 [project.scripts]
 data-analytics-mcuig = "data_analytics_mcuig:main"
@@ -15,3 +17,9 @@ data-analytics-mcuig = "data_analytics_mcuig:main"
 [build-system]
 requires = ["uv_build>=0.11.7,<0.12.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.3",
+]
