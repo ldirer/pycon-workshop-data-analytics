@@ -1,5 +1,3 @@
-"""Tests for data_analytics.column_statistics."""
-
 import pandas as pd
 import pytest
 

@@ -1,0 +1,137 @@
+# Pre-commit, tests, and security (pip-audit, bandit) run in parallel. On pushes
+# to main, after all succeed, builds a PEP 440 dev release (<base>.dev<run_number>)
+# and publishes with uv. MkDocs is built and deployed to GitHub Pages only after
+# publish succeeds.
+#
+# Add a PyPI API token as repository secret PYPI_API_TOKEN (Account settings → API tokens).
+# Pages: Settings → Pages → Source: GitHub Actions.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen --group dev
+      - name: Run pre-commit on all files
+        run: uv run pre-commit run --all-files
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen --group dev
+      - name: Install pytest-xdist
+        run: uv add pytest-xdist --group dev
+      - name: Run tests in parallel
+        run: uv run pytest -n auto
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen --no-dev
+      - name: Install pip-audit
+        run: uv pip install pip-audit
+      - name: Install bandit
+        run: uv pip install bandit
+      - name: pip audit (installed environment)
+        run: uv run pip-audit --skip-editable
+      - name: bandit (src/data_analytics_mcuig)
+        run: uv run bandit -r src/data_analytics_mcuig -f txt
+
+  publish:
+    needs: [pre-commit, test, security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen --group dev
+      - name: Set dev version (PEP 440)
+        run: |
+          base="$(uv version --short)"
+          uv version "${base}.dev${{ github.run_number }}" --frozen
+      - name: Build distributions
+        run: uv build
+      - name: Publish to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          UV_PUBLISH_URL: https://test.pypi.org/legacy/
+        run: uv publish
+
+  docs-build:
+    needs: [publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.14"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen --group dev
+      - name: Install MkDocs
+        run: uv add mkdocs --group dev
+      - name: Install MkDocs Material
+        run: uv add mkdocs-material --group dev
+      - name: Install mkdocstrings
+        run: uv add mkdocstrings[python] --group dev
+      - name: Build MkDocs site
+        run: uv run mkdocs build --strict
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  docs-deploy:
+    needs: [docs-build]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
